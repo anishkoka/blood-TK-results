@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blood Results Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0f1a;
+    --card: #111827;
+    --border: #1e293b;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --psa: #f59e0b;
+    --tc: #3b82f6;
+    --ldl: #ef4444;
+    --hdl: #10b981;
+    --trig: #8b5cf6;
+    --a1c: #f97316;
+    --glu: #06b6d4;
+    --hgb: #ec4899;
+    --hct: #a78bfa;
+    --biopsy: #ef4444;
+    --mri: #3b82f6;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 24px 16px;
+    min-height: 100vh;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; }
+
+  .header {
+    display: flex; align-items: center;
+    gap: 12px; margin-bottom: 4px;
+  }
+
+  .header-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #3b82f6);
+    box-shadow: 0 0 12px rgba(16,185,129,0.4);
+    flex-shrink: 0;
+  }
+
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+
+  .subtitle {
+    color: var(--muted); font-size: 13px;
+    padding-left: 22px; margin-bottom: 20px;
+  }
+
+  .stats-row {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    flex: 1 1 120px; min-width: 120px;
+  }
+
+  .stat-label {
+    color: var(--muted); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 22px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .stat-unit { color: var(--muted); font-size: 11px; margin-left: 3px; }
+  .stat-trend { font-size: 10px; margin-top: 2px; font-weight: 500; }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+
+  .tab {
+    background: #1e293b; color: var(--muted);
+    border: 1px solid #334155; border-radius: 8px;
+    padding: 6px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s ease; font-family: inherit;
+  }
+
+  .tab:hover { border-color: #475569; color: var(--text); }
+
+  .tab.active { background: #1e40af; color: #fff; border-color: #3b82f6; }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 12px 8px 12px;
+    margin-bottom: 16px;
+  }
+
+  .chart-title-row {
+    display: flex; align-items: baseline;
+    gap: 10px; margin-bottom: 4px; padding-left: 8px;
+  }
+
+  .chart-title { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+  .chart-subtitle { color: var(--muted); font-size: 11px; }
+
+  .events-legend {
+    display: flex; gap: 16px; align-items: center;
+    padding: 12px 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-top: 16px; flex-wrap: wrap;
+  }
+
+  .events-legend-title {
+    color: var(--muted); font-size: 11px;
+    font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .event-item { display: flex; align-items: center; gap: 6px; }
+  .event-line { width: 16px; height: 2px; border-radius: 1px; }
+  .event-label { font-size: 11px; }
+  .events-note { color: var(--muted); font-size: 10px; margin-left: auto; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-dot"></div>
+    <h1>Blood Results Dashboard</h1>
+  </div>
+  <div class="subtitle">Sep 2000 – Jan 2026 · 45 data points · Last drawn Jan 16, 2026</div>
+
+  <div class="stats-row" id="stats-row"></div>
+  <div class="tabs" id="tabs"></div>
+
+  <div id="chart-psa" class="chart-card">
+    <div class="chart-title-row">
+      <span class="chart-title">PSA</span>
+      <span class="chart-subtitle">ng/mL</span>
+    </div>
+    <div id="plot-psa"></div>
+  </div>
+
+  <div id="chart-lipids" class="chart-card">
+    <div class="chart-title-row">
+      <span class="chart-title">Lipid Panel</span>
+      <span class="chart-subtitle">mg/dL · Calcium Scores · Medications</span>
+    </div>
+    <div id="plot-lipids"></div>
+  </div>
+
+  <div id="chart-glycemic" class="chart-card">
+    <div class="chart-title-row">
+      <span class="chart-title">Glycemic Control</span>
+      <span class="chart-subtitle">A1C (%) · Glucose (mg/dL)</span>
+    </div>
+    <div id="plot-glycemic"></div>
+  </div>
+
+  <div id="chart-heme" class="chart-card">
+    <div class="chart-title-row">
+      <span class="chart-title">Hematology</span>
+      <span class="chart-subtitle">Hgb (g/dL) · Hct (%)</span>
+    </div>
+    <div id="plot-heme"></div>
+  </div>
+
+  <div class="events-legend">
+    <span class="events-legend-title">Events</span>
+    <div class="event-item">
+      <div class="event-line" style="background: var(--biopsy)"></div>
+      <span class="event-label" style="color: var(--biopsy)">Biopsy</span>
+    </div>
+    <div class="event-item">
+      <div class="event-line" style="background: var(--mri)"></div>
+      <span class="event-label" style="color: var(--mri)">MRI</span>
+    </div>
+    <div class="event-item">
+      <div class="event-line" style="background: #f59e0b"></div>
+      <span class="event-label" style="color: #f59e0b">Ca Score</span>
+    </div>
+    <div class="event-item">
+      <div class="event-line" style="background: #10b981"></div>
+      <span class="event-label" style="color: #10b981">Medication Start</span>
+    </div>
+    <span class="events-note">Dashed horizontal lines = clinical thresholds</span>
+  </div>
+</div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────
+const RAW = [
+  { date: "2000-09-12", psa: 1.3 },
+  { date: "2002-11-20", psa: 1.1 },
+  { date: "2005-04-20", psa: 1.1 },
+  { date: "2006-09-20", psa: 2.6 },
+  { date: "2006-12-15", psa: 3.2 },
+  { date: "2007-04-03", psa: 1.73, tc: 210, ldl: 139, hdl: 46, glu: 114, a1c: 5.9 },
+  { date: "2007-10-01", psa: 2.2, tc: 175, ldl: 126, hdl: 37, glu: 119, a1c: 5.8 },
+  { date: "2008-04-16", psa: 2.3, tc: 178, ldl: 128, hdl: 34, a1c: 6.2 },
+  { date: "2008-12-01", psa: 2.4, tc: 177, ldl: 124, hdl: 40, glu: 106, a1c: 5.8 },
+  { date: "2009-03-31", psa: 2.6, tc: 174, ldl: 122, hdl: 33, glu: 100, a1c: 6.0 },
+  { date: "2009-07-07", psa: 2.2, tc: 178, ldl: 129, hdl: 32, glu: 121, a1c: 5.9 },
+  { date: "2009-09-03", psa: 2.15, tc: 182, ldl: 119, hdl: 47, glu: 107 },
+  { date: "2010-04-21", psa: 3.4, tc: 167, ldl: 108, hdl: 40, glu: 111 },
+  { date: "2010-11-06", psa: 3.2 },
+  { date: "2011-04-11", psa: 3.5, tc: 192, ldl: 133, hdl: 40, glu: 108, a1c: 6.0 },
+  { date: "2011-11-16", psa: 2.6, tc: 192, ldl: 133, hdl: 42, glu: 112, a1c: 6.0 },
+  { date: "2012-04-20", psa: 2.7, tc: 201, ldl: 148, glu: 105, a1c: 5.2 },
+  { date: "2012-07-17", psa: 2.8, glu: 99 },
+  { date: "2013-05-23", psa: 2.41, tc: 189, ldl: 114, hdl: 49, trig: 131, glu: 110, a1c: 5.9 },
+  { date: "2013-09-16", psa: 2.4, tc: 152, ldl: 96, hdl: 43, trig: 64, glu: 89, a1c: 6.0 },
+  { date: "2014-03-20", psa: 2.5, tc: 155, ldl: 98, hdl: 45, trig: 58, glu: 103, a1c: 5.6 },
+  { date: "2014-09-12", psa: 3.1, tc: 153, ldl: 88, hdl: 46, trig: 96, glu: 111, a1c: 5.7 },
+  { date: "2014-12-09", psa: 2.9, tc: 166, ldl: 95, hdl: 50, trig: 105, vldl: 21, glu: 109, a1c: 5.9 },
+  { date: "2015-06-16", psa: 3.2, tc: 164, ldl: 95, hdl: 51, trig: 88, vldl: 18, glu: 109, a1c: 5.9 },
+  { date: "2015-09-09", psa: 2.9, tc: 152, ldl: 89, hdl: 47, trig: 80, vldl: 16, glu: 114, a1c: 5.9 },
+  { date: "2016-02-02", psa: 3.0, tc: 184, ldl: 110, hdl: 56, trig: 88, vldl: 18, glu: 117, a1c: 6.1 },
+  { date: "2016-08-25", psa: 2.7, tc: 172, ldl: 104, hdl: 52, trig: 78, vldl: 16, glu: 114, a1c: 6.0 },
+  { date: "2017-03-30", psa: 3.8, tc: 169, ldl: 96, hdl: 49, trig: 119, vldl: 24, glu: 116, a1c: 6.1 },
+  { date: "2017-09-05", psa: 3.7, tc: 177, ldl: 115, hdl: 49, trig: 65, vldl: 13, glu: 123, a1c: 5.9 },
+  { date: "2018-05-10", psa: 3.0, tc: 160, ldl: 96, hdl: 38, trig: 132, vldl: 26, hct: 43.3, hgb: 15.0, glu: 143, a1c: 6.0 },
+  { date: "2018-11-03", psa: 3.0, tc: 192, ldl: 109, hdl: 42, trig: 203, vldl: 41, hct: 44.4, hgb: 15.5, glu: 126, a1c: 6.1 },
+  { date: "2019-06-05", psa: 2.5, tc: 156, ldl: 99, hdl: 40, trig: 85, hct: 43.9, hgb: 14.7, glu: 112, a1c: 6.1 },
+  { date: "2020-02-04", psa: 2.5, tc: 168, ldl: 102, hdl: 39, trig: 137, hct: 46.1, hgb: 15.4, glu: 128, a1c: 6.1 },
+  { date: "2020-09-23", psa: 3.4, tc: 172, ldl: 103, hdl: 45, trig: 121, hct: 44.7, hgb: 14.7, glu: 118, a1c: 5.9 },
+  { date: "2021-01-20", psa: 2.4, tc: 148, ldl: 77, hdl: 50, trig: 107, hct: 40.7, hgb: 13.8, glu: 115, a1c: 5.6 },
+  { date: "2021-06-30", psa: 2.8, tc: 144, ldl: 80, hdl: 50, trig: 69, hct: 43.1, hgb: 14.4, glu: 108, a1c: 5.7 },
+  { date: "2021-10-14", psa: 2.4, tc: 167, ldl: 98, hdl: 52, trig: 85, hct: 40.8, hgb: 14.0, glu: 102, a1c: 5.6 },
+  { date: "2022-05-05", psa: 2.6, tc: 159, ldl: 100, hdl: 44, trig: 76, hct: 41.3, hgb: 13.9, a1c: 5.8 },
+  { date: "2022-11-29", psa: 4.1, tc: 160, ldl: 97, hdl: 49, trig: 71, hct: 40.8, hgb: 13.6, a1c: 5.9 },
+  { date: "2023-06-05", psa: 3.5, tc: 154, ldl: 94, hdl: 43, trig: 85, hct: 42.7, hgb: 14.1, glu: 120, a1c: 5.9 },
+  { date: "2023-12-13", psa: 3.7, tc: 161, ldl: 97, hdl: 49, trig: 81, vldl: 15, hct: 42.1, hgb: 14.0, glu: 104, a1c: 6.0 },
+  { date: "2024-08-22", psa: 3.15, tc: 172, ldl: 112, hdl: 45, trig: 81, vldl: 15, hct: 43.8, hgb: 14.3, glu: 118, a1c: 6.1 },
+  { date: "2025-05-30", psa: 3.0, tc: 142, ldl: 84, hdl: 46, trig: 58, vldl: 12, hct: 42.7, hgb: 14.2, glu: 94, a1c: 6.1 },
+  { date: "2025-10-15", psa: 3.0, tc: 157, ldl: 92, hdl: 51, trig: 70, vldl: 14, hct: 43.0, hgb: 14.6, glu: 114, a1c: 5.9 },
+  { date: "2026-01-16", psa: 3.7, tc: 98, ldl: 25, hdl: 59, trig: 60, vldl: 14, hct: 44.1, hgb: 14.5, glu: 120, a1c: 5.8 },
+];
+
+const PSA_EVENTS = [
+  { date: "2006-12-22", label: "Biopsy", color: "#ef4444" },
+  { date: "2010-05-06", label: "Biopsy", color: "#ef4444" },
+  { date: "2017-04-18", label: "MRI", color: "#3b82f6" },
+  { date: "2020-10-05", label: "MRI", color: "#3b82f6" },
+  { date: "2022-12-05", label: "MRI", color: "#3b82f6" },
+  { date: "2022-12-06", label: "Biopsy", color: "#ef4444" },
+];
+
+const CALCIUM_SCANS = [
+  { date: "2018-01-01", total: 223, vessels: "LM=0  LAD=189  LCx=34.5  RCA=0  PDA=0" },
+  { date: "2025-07-01", total: 387, vessels: "LM=0  LAD=240  LCx=74  RCA=8  PDA=20" },
+];
+
+const MEDS = [
+  { date: "2025-07-01", label: "Crestor daily started", color: "#10b981" },
+  { date: "2025-10-01", label: "Repatha q2wk started", color: "#22d3ee" },
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+const dates = RAW.map(r => r.date);
+const get = (key) => RAW.map(r => r[key] ?? null);
+
+const plotLayout = (opts = {}) => ({
+  paper_bgcolor: "rgba(0,0,0,0)",
+  plot_bgcolor: "rgba(0,0,0,0)",
+  font: { family: "IBM Plex Sans, sans-serif", color: "#94a3b8", size: 11 },
+  margin: { t: opts.t || 10, r: opts.r || 16, b: 36, l: opts.l || 48 },
+  hovermode: "x unified",
+  hoverlabel: {
+    bgcolor: "#1e293b", bordercolor: "#334155",
+    font: { family: "JetBrains Mono, monospace", size: 12, color: "#e2e8f0" },
+  },
+  xaxis: { gridcolor: "#1e293b", linecolor: "#1e293b", tickfont: { size: 10 }, ...opts.xaxis },
+  yaxis: { gridcolor: "#1e293b", zeroline: false, tickfont: { size: 10 }, ...opts.yaxis },
+  ...(opts.yaxis2 ? {
+    yaxis2: {
+      gridcolor: "transparent", zeroline: false, tickfont: { size: 10 },
+      overlaying: "y", side: "right", ...opts.yaxis2,
+    }
+  } : {}),
+  legend: {
+    orientation: "h", y: -0.18, x: 0.5, xanchor: "center",
+    font: { size: 11 }, bgcolor: "rgba(0,0,0,0)",
+  },
+  shapes: opts.shapes || [],
+  annotations: opts.annotations || [],
+  ...opts.extra,
+});
+
+const traceLine = (x, y, name, color, opts = {}) => ({
+  x, y, name, type: "scatter", mode: "lines+markers",
+  line: { color, width: 2, shape: "spline" },
+  marker: { size: 5, color },
+  connectgaps: true,
+  hovertemplate: `%{y:.1f}<extra>${name}</extra>`,
+  ...opts,
+});
+
+const hLine = (y, color, dash = "dot") => ({
+  type: "line", x0: 0, x1: 1, xref: "paper",
+  y0: y, y1: y, line: { color, width: 1, dash },
+});
+
+const vLine = (date, color, dash = "dash") => ({
+  type: "line", x0: date, x1: date,
+  y0: 0, y1: 1, yref: "paper",
+  line: { color, width: 1.5, dash },
+});
+
+const plotConfig = {
+  displayModeBar: true,
+  modeBarButtonsToRemove: ["lasso2d", "select2d", "autoScale2d"],
+  displaylogo: false, responsive: true,
+};
+
+// ── Summary stats ───────────────────────────────────────────────────────
+const latest = RAW[RAW.length - 1];
+const prev = RAW[RAW.length - 2];
+
+const stats = [
+  {
+    label: "PSA", value: latest.psa, unit: "ng/mL",
+    color: latest.psa > 4 ? "#ef4444" : "#f59e0b",
+    trend: latest.psa > prev.psa ? `↑ from ${prev.psa}` : `↓ from ${prev.psa}`,
+    trendColor: latest.psa > prev.psa ? "#fbbf24" : "#10b981",
+  },
+  {
+    label: "LDL", value: latest.ldl, unit: "mg/dL",
+    color: latest.ldl > 100 ? "#ef4444" : "#10b981",
+    trend: `↓ from ${prev.ldl}`, trendColor: "#10b981",
+  },
+  {
+    label: "HDL", value: latest.hdl, unit: "mg/dL",
+    color: latest.hdl >= 40 ? "#10b981" : "#ef4444",
+    trend: `↑ from ${prev.hdl}`, trendColor: "#10b981",
+  },
+  {
+    label: "A1C", value: latest.a1c, unit: "%",
+    color: latest.a1c > 6.5 ? "#ef4444" : latest.a1c > 5.7 ? "#fbbf24" : "#10b981",
+    trend: latest.a1c < prev.a1c ? `↓ from ${prev.a1c}` : `→ from ${prev.a1c}`,
+    trendColor: latest.a1c <= prev.a1c ? "#10b981" : "#fbbf24",
+  },
+  {
+    label: "Ca Score", value: "387", unit: "AU",
+    color: "#f59e0b",
+    trend: "↑ from 223 (2018)", trendColor: "#fbbf24",
+  },
+];
+
+const statsRow = document.getElementById("stats-row");
+stats.forEach(s => {
+  const card = document.createElement("div");
+  card.className = "stat-card";
+  card.innerHTML = `
+    <div class="stat-label">${s.label}</div>
+    <div>
+      <span class="stat-value" style="color:${s.color}">${s.value}</span>
+      <span class="stat-unit">${s.unit}</span>
+    </div>
+    ${s.trend ? `<div class="stat-trend" style="color:${s.trendColor}">${s.trend}</div>` : ""}
+  `;
+  statsRow.appendChild(card);
+});
+
+// ── Tabs ────────────────────────────────────────────────────────────────
+const tabDefs = [
+  { id: "all", label: "All Panels" },
+  { id: "psa", label: "PSA" },
+  { id: "lipids", label: "Lipids" },
+  { id: "glycemic", label: "Glycemic" },
+  { id: "heme", label: "Hematology" },
+];
+
+const panelIds = ["psa", "lipids", "glycemic", "heme"];
+
+const tabsEl = document.getElementById("tabs");
+tabDefs.forEach(t => {
+  const btn = document.createElement("button");
+  btn.className = "tab" + (t.id === "all" ? " active" : "");
+  btn.textContent = t.label;
+  btn.dataset.id = t.id;
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.id === t.id));
+    panelIds.forEach(pid => {
+      document.getElementById("chart-" + pid).classList.toggle("hidden", t.id !== "all" && t.id !== pid);
+    });
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+  });
+  tabsEl.appendChild(btn);
+});
+
+// ── PSA Chart ───────────────────────────────────────────────────────────
+Plotly.newPlot("plot-psa", [
+  traceLine(dates, get("psa"), "Total PSA", "#f59e0b"),
+], plotLayout({
+  yaxis: { range: [0, 5], title: { text: "ng/mL", standoff: 8, font: { size: 10 } } },
+  shapes: [
+    ...PSA_EVENTS.map(e => vLine(e.date, e.color)),
+    hLine(4.0, "#ef4444"),
+  ],
+  annotations: [
+    ...PSA_EVENTS.map(e => ({
+      x: e.date, y: 1, yref: "paper", text: e.label,
+      showarrow: false, font: { size: 9, color: e.color }, yshift: 8,
+    })),
+    { x: 1, xref: "paper", y: 4.0, text: "4.0", showarrow: false, font: { size: 9, color: "#ef4444" }, xshift: 24 },
+  ],
+}), plotConfig);
+
+// ── Lipids Chart with Calcium Scores & Medication annotations ───────────
+// Calcium scan callout annotations with vessel breakdown
+const calciumAnnotations = CALCIUM_SCANS.map((cs, i) => ({
+  x: cs.date,
+  y: 1, yref: "paper",
+  text: `<b>🫀 Ca Score: ${cs.total}</b><br><span style="font-size:9px">${cs.vessels}</span>`,
+  showarrow: true,
+  arrowhead: 0,
+  arrowcolor: "#f59e0b",
+  arrowwidth: 1.5,
+  ax: i === 0 ? -80 : 80,
+  ay: i === 0 ? -55 : -60,
+  font: { size: 10, color: "#f59e0b", family: "JetBrains Mono, monospace" },
+  bgcolor: "rgba(17,24,39,0.95)",
+  bordercolor: "rgba(245,158,11,0.6)",
+  borderwidth: 1,
+  borderpad: 8,
+  align: "left",
+}));
+
+// Medication start annotations (below the chart)
+const medAnnotations = MEDS.map((m, i) => ({
+  x: m.date,
+  y: 0, yref: "paper",
+  text: `<b>💊 ${m.label}</b>`,
+  showarrow: true,
+  arrowhead: 0,
+  arrowcolor: m.color,
+  arrowwidth: 1.5,
+  ax: i === 0 ? -50 : 50,
+  ay: 48,
+  font: { size: 10, color: m.color },
+  bgcolor: "rgba(17,24,39,0.95)",
+  bordercolor: m.color + "99",
+  borderwidth: 1,
+  borderpad: 6,
+}));
+
+Plotly.newPlot("plot-lipids", [
+  traceLine(dates, get("tc"), "Total Cholesterol", "#3b82f6"),
+  traceLine(dates, get("ldl"), "LDL", "#ef4444"),
+  traceLine(dates, get("hdl"), "HDL", "#10b981"),
+  traceLine(dates, get("trig"), "Triglycerides", "#8b5cf6"),
+], plotLayout({
+  t: 80,
+  yaxis: { range: [0, 240], title: { text: "mg/dL", standoff: 8, font: { size: 10 } } },
+  shapes: [
+    hLine(200, "#3b82f6"),
+    hLine(100, "#ef4444"),
+    hLine(40, "#10b981"),
+    hLine(150, "#8b5cf6"),
+    ...CALCIUM_SCANS.map(cs => vLine(cs.date, "#f59e0b", "dashdot")),
+    ...MEDS.map(m => vLine(m.date, m.color, "dash")),
+  ],
+  annotations: [
+    { x: 1, xref: "paper", y: 200, text: "TC 200", showarrow: false, font: { size: 9, color: "#3b82f6" }, xshift: 30 },
+    { x: 1, xref: "paper", y: 100, text: "LDL 100", showarrow: false, font: { size: 9, color: "#ef4444" }, xshift: 34 },
+    { x: 1, xref: "paper", y: 40, text: "HDL 40", showarrow: false, font: { size: 9, color: "#10b981" }, xshift: 30 },
+    { x: 1, xref: "paper", y: 150, text: "Trig 150", showarrow: false, font: { size: 9, color: "#8b5cf6" }, xshift: 34 },
+    ...calciumAnnotations,
+    ...medAnnotations,
+  ],
+  r: 56,
+}), plotConfig);
+
+// ── Glycemic Chart ──────────────────────────────────────────────────────
+Plotly.newPlot("plot-glycemic", [
+  traceLine(dates, get("a1c"), "HbA1c (%)", "#f97316"),
+  traceLine(dates, get("glu"), "Glucose (mg/dL)", "#06b6d4", { yaxis: "y2" }),
+], plotLayout({
+  yaxis: { range: [4.5, 7], title: { text: "A1C %", standoff: 8, font: { size: 10 } } },
+  yaxis2: { range: [70, 160], title: { text: "mg/dL", standoff: 8, font: { size: 10 } } },
+  shapes: [ hLine(5.7, "#fbbf24"), hLine(6.5, "#ef4444") ],
+  annotations: [
+    { x: 0, xref: "paper", y: 5.7, text: "Pre-DM 5.7", showarrow: false, font: { size: 9, color: "#fbbf24" }, xshift: -44 },
+    { x: 0, xref: "paper", y: 6.5, text: "DM 6.5", showarrow: false, font: { size: 9, color: "#ef4444" }, xshift: -34 },
+  ],
+  r: 56,
+}), plotConfig);
+
+// ── Hematology Chart ────────────────────────────────────────────────────
+Plotly.newPlot("plot-heme", [
+  traceLine(dates, get("hgb"), "Hemoglobin (g/dL)", "#ec4899"),
+  traceLine(dates, get("hct"), "Hematocrit (%)", "#a78bfa", { yaxis: "y2" }),
+], plotLayout({
+  yaxis: { range: [12, 17], title: { text: "g/dL", standoff: 8, font: { size: 10 } } },
+  yaxis2: { range: [36, 50], title: { text: "%", standoff: 8, font: { size: 10 } } },
+  shapes: [ hLine(13.5, "#ec4899") ],
+  annotations: [
+    { x: 0, xref: "paper", y: 13.5, text: "Hgb Low", showarrow: false, font: { size: 9, color: "#ec4899" }, xshift: -36 },
+  ],
+  r: 56,
+}), plotConfig);
+</script>
+</body>
+</html>
