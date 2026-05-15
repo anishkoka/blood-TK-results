@@ -168,7 +168,7 @@
     <div class="header-dot"></div>
     <h1>Blood Results Dashboard</h1>
   </div>
-  <div class="subtitle">Sep 2000 – Jan 2026 · Last drawn Jan 16, 2026</div>
+  <div class="subtitle">Sep 2000 – May 2026 · Last drawn May 8, 2026</div>
 
   <div class="stats-row" id="stats-row"></div>
   <div class="tabs" id="tabs"></div>
@@ -275,6 +275,7 @@ const RAW = [
   { date: "2025-05-30", psa: 3.0, tc: 142, ldl: 84, hdl: 46, trig: 58, hct: 42.7, hgb: 14.2, glu: 94, a1c: 6.1 },
   { date: "2025-10-15", psa: 3.0, tc: 157, ldl: 92, hdl: 51, trig: 70, hct: 43.0, hgb: 14.6, glu: 114, a1c: 5.9 },
   { date: "2026-01-16", psa: 3.7, tc: 98, ldl: 25, hdl: 59, trig: 60, hct: 44.1, hgb: 14.5, glu: 120, a1c: 5.8 },
+  { date: "2026-05-08", psa: 5.391, freePsa: 0.840, pctFree: 15.6, tc: 133, ldl: 64, hdl: 56, trig: 94, hct: 40.1, hgb: 13.6, glu: 135, a1c: 6.5 },
 ];
 
 const toPoints = (key) => RAW.filter(r => r[key] != null).map(r => ({ x: new Date(r.date), y: r[key] }));
@@ -289,7 +290,7 @@ Chart.defaults.elements.line.borderWidth = 2;
 
 const charts = {};
 const dateMin = new Date('1999-06-01');
-const dateMax = new Date('2026-06-01');
+const dateMax = new Date('2026-09-01');
 
 const baseXAxis = {
   type: 'time',
@@ -360,12 +361,17 @@ const hLine = (y, color, label, yAxisID) => ({
 // ── Stats ───────────────────────────────────────────────────────────────
 const L = RAW[RAW.length - 1], P = RAW[RAW.length - 2];
 const stats = [
-  { label: "PSA", value: L.psa, unit: "ng/mL", color: "#f59e0b", trend: `${L.psa > P.psa ? "↑" : "↓"} ${P.psa}`, tc2: L.psa > P.psa ? "#fbbf24" : "#10b981" },
-  { label: "LDL", value: L.ldl, unit: "mg/dL", color: "#10b981", trend: `↓ ${P.ldl}`, tc2: "#10b981" },
-  { label: "HDL", value: L.hdl, unit: "mg/dL", color: "#10b981", trend: `↑ ${P.hdl}`, tc2: "#10b981" },
-  { label: "A1C", value: L.a1c, unit: "%", color: L.a1c > 5.7 ? "#fbbf24" : "#10b981", trend: `↓ ${P.a1c}`, tc2: "#10b981" },
+  { label: "PSA", value: L.psa, unit: "ng/mL", color: L.psa > 4 ? "#ef4444" : "#f59e0b",
+    trend: `${L.psa > P.psa ? "↑" : "↓"} ${P.psa}`, tc2: L.psa > P.psa ? "#ef4444" : "#10b981" },
+  { label: "LDL", value: L.ldl, unit: "mg/dL", color: L.ldl > 100 ? "#ef4444" : "#10b981",
+    trend: `${L.ldl > P.ldl ? "↑" : "↓"} ${P.ldl}`, tc2: L.ldl > P.ldl ? "#fbbf24" : "#10b981" },
+  { label: "HDL", value: L.hdl, unit: "mg/dL", color: L.hdl >= 40 ? "#10b981" : "#ef4444",
+    trend: `${L.hdl >= P.hdl ? "↑" : "↓"} ${P.hdl}`, tc2: L.hdl >= P.hdl ? "#10b981" : "#fbbf24" },
+  { label: "A1C", value: L.a1c, unit: "%", color: L.a1c >= 6.5 ? "#ef4444" : L.a1c > 5.7 ? "#fbbf24" : "#10b981",
+    trend: `${L.a1c > P.a1c ? "↑" : L.a1c < P.a1c ? "↓" : "→"} ${P.a1c}`, tc2: L.a1c > P.a1c ? "#ef4444" : "#10b981" },
   { label: "Ca Score", value: "387", unit: "AU", color: "#f59e0b", trend: "↑ 223 ('18)", tc2: "#fbbf24" },
-  { label: "TC", value: L.tc, unit: "mg/dL", color: "#10b981", trend: `↓ ${P.tc}`, tc2: "#10b981" },
+  { label: "TC", value: L.tc, unit: "mg/dL", color: L.tc > 200 ? "#ef4444" : "#10b981",
+    trend: `${L.tc > P.tc ? "↑" : "↓"} ${P.tc}`, tc2: L.tc > P.tc ? "#fbbf24" : "#10b981" },
 ];
 
 document.getElementById('stats-row').innerHTML = stats.map(s => `
@@ -400,7 +406,7 @@ charts.psa = new Chart(document.getElementById('chart-psa'), {
   options: {
     responsive: true, maintainAspectRatio: true, aspectRatio: 1.8,
     interaction: { mode: 'nearest', intersect: false },
-    scales: { x: baseXAxis, y: baseYAxis(0, 5, 'ng/mL') },
+    scales: { x: baseXAxis, y: baseYAxis(0, 6.5, 'ng/mL') },
     plugins: {
       zoom: zoomOpts('psa'),
       annotation: { annotations: {
